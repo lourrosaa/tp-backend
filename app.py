@@ -1,15 +1,14 @@
 from flask import Flask
+from routes.partidos_put import partidos_put_bp
 
 app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "API funcionando 🚀"
+    return "API funcionando"
 
-if __name__ == "__main__":
+# registrar antes de correr la app
+app.register_blueprint(partidos_put_bp)
+
+if __name__ == "_main_":
     app.run(debug=True)
-
-
-from routes.partidos import partidos_bp
-
-app.register_blueprint(partidos_bp)
