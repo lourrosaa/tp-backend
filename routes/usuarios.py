@@ -29,3 +29,29 @@ def actualizar_usuario(id):
     db.session.commit()
 
     return jsonify({"mensaje": "Usuario actualizado"}), 200
+
+@usuarios_bp.route("/usuarios/<int:id>", methods=["GET"])
+def detalle_usuarios(id):
+    usuario = Usuario.query.get(id)
+
+    if not usuario:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    return jsonify({
+        "id": usuario.id,
+        "nombre": usuario.nombre,
+        "email": usuario.email,
+        "puntos": usuario.puntos
+    }), 200
+
+@usuarios_bp.route("/usuarios/<int:id>", methods=["DELETE"])
+def eliminar_usuarios(id):
+    usuario = Usuario.query.get(id)
+
+    if not usuario:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    db.session.delete(usuario)
+    db.session.commit()
+
+    return jsonify({"mensaje": "Usuario eliminado correctamente"}), 200
