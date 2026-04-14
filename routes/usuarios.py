@@ -4,6 +4,50 @@ from database import db
 
 usuarios_bp = Blueprint("usuarios", __name__)
 
+@usuarios_bp.route("/usuarios", methods=["GET"])
+def listar_usuarios():
+    usuarios = Usuario.query.all()
+    resultado = []
+    for u in usuarios:
+        resultado.append({
+            "id": u.id,
+            "nombre": u.nombre,
+            "email": u.email,
+            "puntos": u.puntos
+        })
+    return jsonify(resultado), 200
+
+@usuarios_bp.route("/usuarios", methods=["POST"])
+def crear_usuario():
+    data = request.get_json()
+
+    if not data or not data.get("nombre") or not data.get("email"):
+        return jsonify({"error": "Faltan datos obligatorios (nombre, email)"}), 400
+
+    nuevo_user = Usuario(
+        nombre=data["nombre"],
+        email=data["email"]
+    )
+
+    db.session.add(nuevo_user)
+    db.session.commit()
+
+    return jsonify({"mensaje": "Usuario creado"}), 201
+
+@usuarios_bp.route("/usuarios/<int:id>", methods=["GET"])
+def detalle_usuarios(id):
+    usuario = Usuario.query.get(id)
+
+    if not usuario:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    return jsonify({
+        "id": usuario.id,
+        "nombre": usuario.nombre,
+        "email": usuario.email,
+        "puntos": usuario.puntos
+    }), 200
+
 @usuarios_bp.route("/usuarios/<int:id>", methods=["PATCH"])
 def actualizar_usuario(id):
     usuario = Usuario.query.get(id)
@@ -29,20 +73,6 @@ def actualizar_usuario(id):
     db.session.commit()
 
     return jsonify({"mensaje": "Usuario actualizado"}), 200
-
-@usuarios_bp.route("/usuarios/<int:id>", methods=["GET"])
-def detalle_usuarios(id):
-    usuario = Usuario.query.get(id)
-
-    if not usuario:
-        return jsonify({"error": "Usuario no encontrado"}), 404
-
-    return jsonify({
-        "id": usuario.id,
-        "nombre": usuario.nombre,
-        "email": usuario.email,
-        "puntos": usuario.puntos
-    }), 200
 
 @usuarios_bp.route("/usuarios/<int:id>", methods=["DELETE"])
 def eliminar_usuarios(id):
