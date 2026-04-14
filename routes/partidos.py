@@ -96,6 +96,47 @@ def detalle_partido(id):
         "goles_visitante": partido.goles_visitante
     }), 200
 
+@partidos_bp.route("/partidos/<int:id>", methods=["PUT"])
+def reemplazar_partido(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": "Partido no encontrado"}), 404
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No se enviaron datos"}), 400
+
+    campos_requeridos = [
+        "equipo_local",
+        "equipo_visitante",
+        "fecha",
+        "fase"
+    ]
+
+    for campo in campos_requeridos:
+        if campo not in data:
+            return jsonify({"error": f"Falta el campo {campo}"}), 400
+
+    partido.equipo_local = data["equipo_local"]
+    partido.equipo_visitante = data["equipo_visitante"]
+    partido.fecha = data["fecha"]
+    partido.fase = data["fase"]
+
+    db.session.commit()
+
+    return jsonify({
+        "mensaje": "Partido reemplazado correctamente",
+        "partido": {
+            "id": partido.id,
+            "equipo_local": partido.equipo_local,
+            "equipo_visitante": partido.equipo_visitante,
+            "fecha": str(partido.fecha),
+            "fase": partido.fase
+        }
+    }), 200
+
 @partidos_bp.route("/partidos/<int:id>", methods=["PATCH"])
 def actualizar_partido(id):
     partido = Partido.query.get(id)
@@ -167,6 +208,23 @@ def actualizar_resultado_partido(id):
             "goles_visitante": goles_visitante
         }
     }), 200
+
+@partidos_bp.route("/partidos/<int:id>/prediccion", methods=["POST"])
+def prediccion(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": "Partido no encontrado"}), 404
+
+    data = request.get_json()
+
+    if not data or "goles_local" not in data or "goles_visitante" not in data:
+        return jsonify({"error": "Faltan goles"}), 400
+
+    return jsonify({
+        "mensaje": "Predicción registrada",
+        "prediccion": data
+    }), 201
 
 @partidos_bp.route("/partidos/<int:id>", methods=["DELETE"])
 def eliminar_partido(id):

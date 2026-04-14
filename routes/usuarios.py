@@ -48,6 +48,35 @@ def detalle_usuarios(id):
         "puntos": usuario.puntos
     }), 200
 
+@usuarios_bp.route("/usuarios/<int:id>", methods=["PUT"])
+def reemplazar_usuario(id):
+    usuario = Usuario.query.get(id)
+
+    if not usuario:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    data = request.get_json()
+
+    if not data or "nombre" not in data or "email" not in data:
+        return jsonify({"error": "Faltan campos obligatorios"}), 400
+
+    usuario.nombre = data["nombre"]
+    usuario.email = data["email"]
+    if "puntos" in data:
+        usuario.puntos = data["puntos"]
+
+    db.session.commit()
+
+    return jsonify({
+        "mensaje": "Usuario reemplazado",
+        "usuario": {
+            "id": usuario.id,
+            "nombre": usuario.nombre,
+            "email": usuario.email,
+            "puntos": usuario.puntos
+        }
+    }), 200
+
 @usuarios_bp.route("/usuarios/<int:id>", methods=["PATCH"])
 def actualizar_usuario(id):
     usuario = Usuario.query.get(id)
@@ -60,7 +89,6 @@ def actualizar_usuario(id):
     if not data:
         return jsonify({"error": "No se enviaron datos"}), 400
 
-    # actualiza solo lo que venga
     if "nombre" in data:
         usuario.nombre = data["nombre"]
 
