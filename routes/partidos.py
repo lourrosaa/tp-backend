@@ -221,6 +221,10 @@ def prediccion(id):
     if not data or "goles_local" not in data or "goles_visitante" not in data:
         return jsonify({"error": "Faltan goles"}), 400
 
+    partido.prediccion_local = data["goles_local"]
+    partido.prediccion_visitante = data["goles_visitante"]
+    db.session.commit()
+    
     return jsonify({
         "mensaje": "Predicción registrada",
         "prediccion": data
@@ -239,3 +243,4 @@ def eliminar_partido(id):
     return jsonify({
         "mensaje": "Partido eliminado correctamente"
     }), 200
+
