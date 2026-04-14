@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models import Partido
 from database import db
+from database import obtener_todos, guardar_todos
 
 partidos_bp = Blueprint("partidos", __name__)
 partidos_id_bp = Blueprint("partidos_id", __name__)
@@ -49,36 +50,44 @@ def listar_partidos():
 
     return jsonify(resultado), 200
 
+#########################################################################
 @partidos_id_bp.route("/partidos/<int:id>", methods=["GET"])
 def detalle_partido(id):
     #busco el partido en db
-    partido = Partido.query.get(id)
+    partido = obtener_todos()
+    partido_encontrado = None
 
-    if not partido:
+    for partido in partidos:
+        if partido["id"] == id:
+            partido_encontrado = partido
+
+    if partido_encontrado is None:
         return jsonify({"error": "Partido no encontrado"}), 404
-    
-    return jsonify({
-        "id":partido.id,
-        "equipo_local":partido.equipo_local,
-        "equipo_visitante":partido.equipo_visitante,
-        "goles_local":partido.goles_local,
-        "goles_visitante":partido.goles_visitante,
-    }), 200
+
+    return jsonify(partido_encontrado), 200
     
 @partidos_id_bp.route("/partidos/<int:id>", methods=["DELETE"])
 def eliminar_partido(id):
-    partido = Partido.query.get(id)
+    partido = obtener_todos()
+    nuevos_partidos = obtener_todos()
+    encontrado = False
 
-    if not partido:
+    for partido in partidos:
+        if partido["id"] == id:
+            encontrado = True
+        else:
+            nuevos_partidos.append(partido)
+
+    if not encontrado:
         return jsonify({"error": "Partido no encontrado"}), 404
 
-    # Eliminar de la DB
-    db.session.delete(partido)
-    db.session.commit()
+    guardar_todos(nuevos_partidos)
 
     return jsonify({
         "mensaje": "Partido eliminado correctamente"
     }), 200
+
+##########################################################################
 
 @partidos_bp.route("/partidos/<int:id>", methods=["PATCH"])
 def actualizar_partido(id):
