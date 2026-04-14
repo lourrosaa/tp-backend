@@ -1,42 +1,44 @@
-from flask import Flask, jsonify, request
+from flask import Blueprint, request, jsonify
+from models import Partido
 
-app = Flask(__name__)
+getpartidos_bp = Blueprint("getpartidos", __name__)
 
-partidos = [
-    {"id": 1, "local": "Argentina", "visitante": "Brasil", "fecha": "2026-06-10", "fase": "grupos"},
-    {"id": 2, "local": "Francia", "visitante": "Alemania", "fecha": "2026-06-11", "fase": "grupos"},
-    {"id": 3, "local": "España", "visitante": "Italia", "fecha": "2026-06-12", "fase": "grupos"},
-    {"id": 4, "local": "Argentina", "visitante": "Uruguay", "fecha": "2026-06-13", "fase": "eliminatorias"}
-]
-
-@app.route("/partidos", methods=["GET"])
+@getpartidos_bp.route("/partidos", methods=["GET"])
 def listar_partidos():
+
     equipo = request.args.get("equipo")
     fecha = request.args.get("fecha")
     fase = request.args.get("fase")
     limit = request.args.get("limit", type=int)
     offset = request.args.get("offset", type=int, default=0)
 
-    resultado = partidos
+    query = Partido.query
 
     if equipo:
-        resultado = [
-            p for p in resultado
-            if equipo.lower() in p["local"].lower()
-            or equipo.lower() in p["visitante"].lower()
-        ]
+        query = query.filter(
+            (Partido.equipo_local.ilike(f"%{equipo}%")) |
+            (Partido.equipo_visitante.ilike(f"%{equipo}%"))
+        )
 
     if fecha:
-        resultado = [p for p in resultado if p["fecha"] == fecha]
+        query = query.filter(Partido.fecha == fecha)
 
     if fase:
-        resultado = [p for p in resultado if p["fase"] == fase]
+        query = query.filter(Partido.fase == fase)
 
     if limit is not None:
-        resultado = resultado[offset:offset + limit]
+        partidos = query.offset(offset).limit(limit).all()
+    else:
+        partidos = query.all()
 
-    return jsonify(resultado)
+    resultado = []
+    for p in partidos:
+        resultado.append({
+            "id": p.id,
+            "equipo_local": p.equipo_local,
+            "equipo_visitante": p.equipo_visitante,
+            "fecha": str(p.fecha),
+            "fase": p.fase
+        })
 
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    return jsonify(resultado), 200
