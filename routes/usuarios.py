@@ -4,23 +4,6 @@ from database import db
 
 usuarios_bp = Blueprint("usuarios", __name__)
 
-# ---------------- GET TODOS ----------------
-@usuarios_bp.route("/usuarios", methods=["GET"])
-def listar_usuarios():
-
-    usuarios = Usuario.query.all()
-
-    resultado = []
-    for u in usuarios:
-        resultado.append({
-            "id": u.id,
-            "nombre": u.nombre,
-            "email": u.email,
-            "puntos": u.puntos
-        })
-
-    return jsonify(resultado), 200
-
 # ---------------- POST ----------------
 @usuarios_bp.route("/usuarios", methods=["POST"])
 def crear_usuario():
@@ -54,6 +37,23 @@ def crear_usuario():
             "puntos": nuevo_usuario.puntos
         }
     }), 201
+
+# ---------------- GET TODOS ----------------
+@usuarios_bp.route("/usuarios", methods=["GET"])
+def listar_usuarios():
+
+    usuarios = Usuario.query.all()
+
+    resultado = []
+    for u in usuarios:
+        resultado.append({
+            "id": u.id,
+            "nombre": u.nombre,
+            "email": u.email,
+            "puntos": u.puntos
+        })
+
+    return jsonify(resultado), 200
 
 # ---------------- GET BY ID ----------------
 @usuarios_bp.route("/usuarios/<int:id>", methods=["GET"])

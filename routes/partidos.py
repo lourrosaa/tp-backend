@@ -96,6 +96,74 @@ def detalle_partido(id):
         "goles_visitante": partido.goles_visitante
     }), 200
 
+@partidos_bp.route("/partidos/<int:id>", methods=["DELETE"])
+def eliminar_partido(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": "Partido no encontrado"}), 404
+        
+    db.session.delete(partido)
+    db.session.commit()
+
+    return jsonify({
+        "mensaje": "Partido eliminado correctamente"
+    }), 200
+
+@partidos_bp.route('/partidos/<int:id>/resultado', methods=['PUT'])
+def actualizar_resultado_partido(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": f"No se encontró el partido con ID {id}"}), 404
+
+    data = request.get_json()
+    
+    if not data or 'goles_local' not in data or 'goles_visitante' not in data:
+        return jsonify({"error": "Faltan los campos requeridos: goles_local y/o goles_visitante"}), 400
+        
+    goles_local = data.get('goles_local')
+    goles_visitante = data.get('goles_visitante')
+    
+    if not isinstance(goles_local, int) or not isinstance(goles_visitante, int):
+        return jsonify({"error": "Los goles deben ser valores numéricos enteros"}), 400
+        
+    if goles_local < 0 or goles_visitante < 0:
+        return jsonify({"error": "Los goles no pueden ser negativos"}), 400
+
+    partido.goles_local = goles_local
+    partido.goles_visitante = goles_visitante
+
+    predicciones = Prediccion.query.filter_by(partido_id=id).all()
+
+    for p in predicciones:
+        usuario = Usuario.query.get(p.usuario_id)
+
+        real_local = goles_local
+        real_visitante = goles_visitante
+
+        pred_local = p.goles_local
+        pred_visitante = p.goles_visitante
+
+        if pred_local == real_local and pred_visitante == real_visitante:
+            usuario.puntos += 3
+
+        elif (pred_local > pred_visitante and real_local > real_visitante) or \
+             (pred_local < pred_visitante and real_local < real_visitante) or \
+             (pred_local == pred_visitante and real_local == real_visitante):
+            usuario.puntos += 1
+
+
+    db.session.commit()
+        
+    return jsonify({
+        "mensaje": "Resultado actualizado con éxito",
+        "resultado_cargado": {
+            "goles_local": goles_local,
+            "goles_visitante": goles_visitante
+        }
+    }), 200
+
 @partidos_bp.route("/partidos/<int:id>", methods=["PUT"])
 def reemplazar_partido(id):
     partido = Partido.query.get(id)
@@ -175,60 +243,6 @@ def actualizar_partido(id):
         }
     }), 200
 
-@partidos_bp.route('/partidos/<int:id>/resultado', methods=['PUT'])
-def actualizar_resultado_partido(id):
-    partido = Partido.query.get(id)
-
-    if not partido:
-        return jsonify({"error": f"No se encontró el partido con ID {id}"}), 404
-
-    data = request.get_json()
-    
-    if not data or 'goles_local' not in data or 'goles_visitante' not in data:
-        return jsonify({"error": "Faltan los campos requeridos: goles_local y/o goles_visitante"}), 400
-        
-    goles_local = data.get('goles_local')
-    goles_visitante = data.get('goles_visitante')
-    
-    if not isinstance(goles_local, int) or not isinstance(goles_visitante, int):
-        return jsonify({"error": "Los goles deben ser valores numéricos enteros"}), 400
-        
-    if goles_local < 0 or goles_visitante < 0:
-        return jsonify({"error": "Los goles no pueden ser negativos"}), 400
-
-    partido.goles_local = goles_local
-    partido.goles_visitante = goles_visitante
-
-    predicciones = Prediccion.query.filter_by(partido_id=id).all()
-
-    for p in predicciones:
-        usuario = Usuario.query.get(p.usuario_id)
-
-        real_local = goles_local
-        real_visitante = goles_visitante
-
-        pred_local = p.goles_local
-        pred_visitante = p.goles_visitante
-
-        if pred_local == real_local and pred_visitante == real_visitante:
-            usuario.puntos += 3
-
-        elif (pred_local > pred_visitante and real_local > real_visitante) or \
-             (pred_local < pred_visitante and real_local < real_visitante) or \
-             (pred_local == pred_visitante and real_local == real_visitante):
-            usuario.puntos += 1
-
-
-    db.session.commit()
-        
-    return jsonify({
-        "mensaje": "Resultado actualizado con éxito",
-        "resultado_cargado": {
-            "goles_local": goles_local,
-            "goles_visitante": goles_visitante
-        }
-    }), 200
-
 @partidos_bp.route("/partidos/<int:id>/prediccion", methods=["POST"])
 def prediccion(id):
     partido = Partido.query.get(id)
@@ -254,18 +268,4 @@ def prediccion(id):
     return jsonify({
         "mensaje": "Predicción guardada correctamente"
     }), 201
-
-@partidos_bp.route("/partidos/<int:id>", methods=["DELETE"])
-def eliminar_partido(id):
-    partido = Partido.query.get(id)
-
-    if not partido:
-        return jsonify({"error": "Partido no encontrado"}), 404
-        
-    db.session.delete(partido)
-    db.session.commit()
-
-    return jsonify({
-        "mensaje": "Partido eliminado correctamente"
-    }), 200
 
