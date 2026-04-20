@@ -1,17 +1,11 @@
 from flask import Blueprint, request, jsonify
-from models import Partido
+from models import Partido, Prediccion, Usuario
 from database import db
 
 partidos_bp = Blueprint("partidos", __name__)
-partidos_id_bp = Blueprint("partidos_id", __name__)
-partidos_put_bp = Blueprint("partidos_put", __name__)
-partidos_actualizar_bp = Blueprint("partidos_actualizar", __name__)
-partidos_crear_bp = Blueprint("crear_partidos", __name__)
-getpartidos_bp = Blueprint("getpartidos", __name__)
 
-@getpartidos_bp.route("/partidos", methods=["GET"])
+@partidos_bp.route("/partidos", methods=["GET"])
 def listar_partidos():
-
     equipo = request.args.get("equipo")
     fecha = request.args.get("fecha")
     fase = request.args.get("fase")
@@ -44,168 +38,16 @@ def listar_partidos():
             "equipo_local": p.equipo_local,
             "equipo_visitante": p.equipo_visitante,
             "fecha": str(p.fecha),
-            "fase": p.fase
+            "fase": p.fase,
+            "goles_local": p.goles_local,
+            "goles_visitante": p.goles_visitante
         })
 
     return jsonify(resultado), 200
 
-@partidos_id_bp.route("/partidos/<int:id>", methods=["GET"])
-def detalle_partido(id):
-    #busco el partido en db
-    partido = Partido.query.get(id)
-
-    if not partido:
-        return jsonify({"error": "Partido no encontrado"}), 404
-    
-    return jsonify({
-        "id":partido.id,
-        "equipo_local":partido.equipo_local,
-        "equipo_visitante":partido.equipo_visitante,
-        "goles_local":partido.goles_local,
-        "goles_visitante":partido.goles_visitante,
-    }), 200
-    
-@partidos_id_bp.route("/partidos/<int:id>", methods=["DELETE"])
-def eliminar_partido(id):
-    partido = Partido.query.get(id)
-
-    if not partido:
-        return jsonify({"error": "Partido no encontrado"}), 404
-
-    # Eliminar de la DB
-    db.session.delete(partido)
-    db.session.commit()
-
-    return jsonify({
-        "mensaje": "Partido eliminado correctamente"
-    }), 200
-
-@partidos_bp.route("/partidos/<int:id>", methods=["PATCH"])
-def actualizar_partido(id):
-    # Buscar partido
-    partido = Partido.query.get(id)
-
-    if not partido:
-        return jsonify({"error": "Partido no encontrado"}), 404
-
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"error": "No se enviaron datos"}), 400
-
-    # Campos permitidos para actualizar
-    campos_permitidos = [
-        "equipo_local",
-        "equipo_visitante",
-        "goles_local",
-        "goles_visitante"
-    ]
-
-    # Actualizar solo lo permitido
-    for campo in campos_permitidos:
-        if campo in data:
-            setattr(partido, campo, data[campo])
-
-    # Guardar cambios
-    db.session.commit()
-
-    return jsonify({
-        "mensaje": "Partido actualizado correctamente",
-        "partido": {
-            "id": partido.id,
-            "equipo_local": partido.equipo_local,
-            "equipo_visitante": partido.equipo_visitante,
-            "goles_local": partido.goles_local,
-            "goles_visitante": partido.goles_visitante
-        }
-    }), 200
-
-# mock de datos
-partidos = {
-    1: {
-        "equipo_local": "Argentina",
-        "equipo_visitante": "Brasil",
-        "fecha": "2026-06-10",
-        "fase": "Grupos"
-    }
-}
-
-@partidos_put_bp.route("/partidos/<int:id>", methods=["PUT"])
-
-def reemplazar_partido(id):
-
-    if id not in partidos:
-        return jsonify({"error": "Partido no encontrado"}), 404
-
-    data = request.get_json()
-    # obtiene los datos enviados en el body de la request
-
-    if not data:
-        return jsonify({"error": "No se enviaron datos"}), 400
-    # valida que se hayan enviado datos
-
-    campos_requeridos = [
-        "equipo_local",
-        "equipo_visitante",
-        "fecha",
-        "fase"
-    ]
-
-    for campo in campos_requeridos:
-        if campo not in data:
-            return jsonify({"error": f"Falta el campo {campo}"}), 400
-    # recorre los campos obligatorios y si falta alguno da error
-
-    partidos[id] = {
-        "equipo_local": data["equipo_local"],
-        "equipo_visitante": data["equipo_visitante"],
-        "fecha": data["fecha"],
-        "fase": data["fase"]
-    }
-    # reemplaza completamente el partido existente 
-
-    return jsonify({
-        "mensaje": "Partido reemplazado correctamente",
-        "partido": partidos[id]
-    }), 200
-
-@partidos_actualizar_bp.route('/partidos/<int:id>/resultado', methods=['PUT'])
-def actualizar_resultado_partido(id):
-    try:
-        data = request.get_json()
-        
-        if not data or 'goles_local' not in data or 'goles_visitante' not in data:
-            return jsonify({"error": "Faltan los campos requeridos: goles_local y/o goles_visitante"}), 400
-            
-        goles_local = data.get('goles_local')
-        goles_visitante = data.get('goles_visitante')
-        
-        if not isinstance(goles_local, int) or not isinstance(goles_visitante, int):
-            return jsonify({"error": "Los goles deben ser valores numéricos enteros"}), 400
-            
-        if goles_local < 0 or goles_visitante < 0:
-            return jsonify({"error": "Los goles no pueden ser negativos"}), 400
-
-        # exito = actualizar_goles_en_db(id, goles_local, goles_visitante)
-        exito = True 
-        
-        if not exito:
-            return jsonify({"error": f"No se encontró el partido con ID {id}"}), 404
-            
-        return jsonify({
-            "mensaje": "Resultado actualizado con éxito",
-            "resultado_cargado": {
-                "goles_local": goles_local,
-                "goles_visitante": goles_visitante
-            }
-        }), 200
-
-    except Exception as e:
-        return jsonify({"error": "Error interno del servidor"}), 500
-    
-@partidos_crear_bp.route("/partidos", methods=["POST"])
+@partidos_bp.route("/partidos", methods=["POST"])
 def crear_partido():
-    data = request.get_json()  #Lee lo que manda el cliente
+    data = request.get_json()
 
     if not data:
         return jsonify({"error": "No se enviaron datos"}), 400
@@ -223,10 +65,8 @@ def crear_partido():
         fase=data["fase"]
     )
 
-
-    db.session.add(nuevo_partido)  #Lo prepara para guardarlo en la base de datos
-    db.session.commit()  #Lo guarda 
-
+    db.session.add(nuevo_partido)
+    db.session.commit()
 
     return jsonify({
         "mensaje": "Partido creado correctamente",
@@ -234,8 +74,198 @@ def crear_partido():
             "id": nuevo_partido.id,
             "equipo_local": nuevo_partido.equipo_local,
             "equipo_visitante": nuevo_partido.equipo_visitante,
-            "fecha": nuevo_partido.fecha,
+            "fecha": str(nuevo_partido.fecha),
             "fase": nuevo_partido.fase
         }
     }), 201
+
+@partidos_bp.route("/partidos/<int:id>", methods=["GET"])
+def detalle_partido(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": "Partido no encontrado"}), 404
+
+    return jsonify({
+        "id": partido.id,
+        "equipo_local": partido.equipo_local,
+        "equipo_visitante": partido.equipo_visitante,
+        "fecha": str(partido.fecha),
+        "fase": partido.fase,
+        "goles_local": partido.goles_local,
+        "goles_visitante": partido.goles_visitante
+    }), 200
+
+@partidos_bp.route("/partidos/<int:id>", methods=["PUT"])
+def reemplazar_partido(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": "Partido no encontrado"}), 404
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No se enviaron datos"}), 400
+
+    campos_requeridos = [
+        "equipo_local",
+        "equipo_visitante",
+        "fecha",
+        "fase"
+    ]
+
+    for campo in campos_requeridos:
+        if campo not in data:
+            return jsonify({"error": f"Falta el campo {campo}"}), 400
+
+    partido.equipo_local = data["equipo_local"]
+    partido.equipo_visitante = data["equipo_visitante"]
+    partido.fecha = data["fecha"]
+    partido.fase = data["fase"]
+
+    db.session.commit()
+
+    return jsonify({
+        "mensaje": "Partido reemplazado correctamente",
+        "partido": {
+            "id": partido.id,
+            "equipo_local": partido.equipo_local,
+            "equipo_visitante": partido.equipo_visitante,
+            "fecha": str(partido.fecha),
+            "fase": partido.fase
+        }
+    }), 200
+
+@partidos_bp.route("/partidos/<int:id>", methods=["PATCH"])
+def actualizar_partido(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": "Partido no encontrado"}), 404
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No se enviaron datos"}), 400
+
+    campos_permitidos = [
+        "equipo_local",
+        "equipo_visitante",
+        "goles_local",
+        "goles_visitante",
+        "fecha",
+        "fase"
+    ]
+
+    for campo in campos_permitidos:
+        if campo in data:
+            setattr(partido, campo, data[campo])
+
+    db.session.commit()
+
+    return jsonify({
+        "mensaje": "Partido actualizado correctamente",
+        "partido": {
+            "id": partido.id,
+            "equipo_local": partido.equipo_local,
+            "equipo_visitante": partido.equipo_visitante,
+            "goles_local": partido.goles_local,
+            "goles_visitante": partido.goles_visitante
+        }
+    }), 200
+
+@partidos_bp.route('/partidos/<int:id>/resultado', methods=['PUT'])
+def actualizar_resultado_partido(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": f"No se encontró el partido con ID {id}"}), 404
+
+    data = request.get_json()
+    
+    if not data or 'goles_local' not in data or 'goles_visitante' not in data:
+        return jsonify({"error": "Faltan los campos requeridos: goles_local y/o goles_visitante"}), 400
+        
+    goles_local = data.get('goles_local')
+    goles_visitante = data.get('goles_visitante')
+    
+    if not isinstance(goles_local, int) or not isinstance(goles_visitante, int):
+        return jsonify({"error": "Los goles deben ser valores numéricos enteros"}), 400
+        
+    if goles_local < 0 or goles_visitante < 0:
+        return jsonify({"error": "Los goles no pueden ser negativos"}), 400
+
+    partido.goles_local = goles_local
+    partido.goles_visitante = goles_visitante
+
+    predicciones = Prediccion.query.filter_by(partido_id=id).all()
+
+    for p in predicciones:
+        usuario = Usuario.query.get(p.usuario_id)
+
+        real_local = goles_local
+        real_visitante = goles_visitante
+
+        pred_local = p.goles_local
+        pred_visitante = p.goles_visitante
+
+        if pred_local == real_local and pred_visitante == real_visitante:
+            usuario.puntos += 3
+
+        elif (pred_local > pred_visitante and real_local > real_visitante) or \
+             (pred_local < pred_visitante and real_local < real_visitante) or \
+             (pred_local == pred_visitante and real_local == real_visitante):
+            usuario.puntos += 1
+
+
+    db.session.commit()
+        
+    return jsonify({
+        "mensaje": "Resultado actualizado con éxito",
+        "resultado_cargado": {
+            "goles_local": goles_local,
+            "goles_visitante": goles_visitante
+        }
+    }), 200
+
+@partidos_bp.route("/partidos/<int:id>/prediccion", methods=["POST"])
+def prediccion(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": "Partido no encontrado"}), 404
+
+    data = request.get_json()
+
+    if not data or "goles_local" not in data or "goles_visitante" not in data:
+        return jsonify({"error": "Faltan goles"}), 400
+
+    nueva_prediccion = Prediccion(
+        usuario_id=data["usuario_id"],
+        partido_id=id,
+        goles_local=data["goles_local"],
+        goles_visitante=data["goles_visitante"]
+    )
+
+    db.session.add(nueva_prediccion)
+    db.session.commit()
+
+    return jsonify({
+        "mensaje": "Predicción guardada correctamente"
+    }), 201
+
+@partidos_bp.route("/partidos/<int:id>", methods=["DELETE"])
+def eliminar_partido(id):
+    partido = Partido.query.get(id)
+
+    if not partido:
+        return jsonify({"error": "Partido no encontrado"}), 404
+        
+    db.session.delete(partido)
+    db.session.commit()
+
+    return jsonify({
+        "mensaje": "Partido eliminado correctamente"
+    }), 200
 
